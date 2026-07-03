@@ -27,6 +27,8 @@ class MemorySystem:
 
         self.tlb_hits = 0
         self.tlb_misses = 0
+        self.total_accesses = 0
+        self.system_page_faults = 0
 
     def _virtual_to_vpn_offset(self, virtual_address):
         page_offset = virtual_address & (self.page_size - 1)
@@ -38,6 +40,7 @@ class MemorySystem:
         Simulates one full memory access. Returns a dict of what happened,
         useful for logging/analysis later.
         """
+        self.total_accesses += 1
         vpn, page_offset = self._virtual_to_vpn_offset(virtual_address)
 
         # Step 1: try the TLB first (the fast path).
@@ -48,16 +51,20 @@ class MemorySystem:
         else:
             self.tlb_misses += 1
             # Step 2: TLB miss -> walk the page table (the slow path).
+            faults_before = self.page_table.page_faults
             frame = self.page_table.translate(vpn)
+            # if translate() caused a new fault, record it at system level too
+            if self.page_table.page_faults > faults_before:
+                self.system_page_faults += 1
             # Refill the TLB so next time this page is a TLB hit.
             self.tlb.insert(vpn, frame)
 
-        # Step 3: reconstruct the physical address from frame + page_offset.
+        # Step 3: reconstruct physical address from frame + page_offset.
         physical_address = (frame << self.page_offset_bits) | page_offset
 
         # Step 4: access the cache using the physical address
-        # (this is a physically-indexed, physically-tagged cache —
-        # the simpler, more common real-world design choice).
+        # (physically-indexed, physically-tagged cache — simpler, more
+        # common real-world design: translate first, then access cache).
         cache_hit = self.cache.access(physical_address, mode)
 
         return {
@@ -71,6 +78,6 @@ class MemorySystem:
         total_tlb = self.tlb_hits + self.tlb_misses
         return {
             "tlb_hit_rate": self.tlb_hits / total_tlb if total_tlb else 0.0,
-            "page_fault_rate": self.page_table.fault_rate(),
+            "page_fault_rate": self.system_page_faults / self.total_accesses if self.total_accesses else 0.0,
             "cache_hit_rate": self.cache.hit_rate(),
         }
