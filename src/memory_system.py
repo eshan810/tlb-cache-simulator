@@ -81,3 +81,51 @@ class MemorySystem:
             "page_fault_rate": self.system_page_faults / self.total_accesses if self.total_accesses else 0.0,
             "cache_hit_rate": self.cache.hit_rate(),
         }
+    
+    def amat(self,
+         l1_hit_cycles=4,
+         l2_hit_cycles=12,
+         mem_cycles=200,
+         tlb_hit_cycles=1,
+         tlb_miss_penalty=20):
+        """
+        Average Memory Access Time in CPU cycles.
+
+        Realistic latency model:
+        L1 cache hit   :   4 cycles  (fast SRAM)
+        L2 cache hit   :  12 cycles  (slower SRAM)
+        RAM access     : 200 cycles  (DRAM)
+        TLB hit        :   1 cycle   (parallel with cache in real HW,
+                                        modelled as small adder here)
+        TLB miss       :  20 cycles  (page table walk penalty)
+
+        Formula:
+        AMAT = translation_cost
+            + L1_hit_time
+            + L1_miss_rate × (L2_hit_time + L2_miss_rate × mem_time)
+
+        We don't simulate L2 explicitly, so we treat an L1 miss as going
+        straight to RAM — a conservative (pessimistic) model that makes
+        the cache miss penalty very visible.
+        """
+        cache_miss_rate = 1.0 - self.cache.hit_rate()
+        total_tlb       = self.tlb_hits + self.tlb_misses
+        tlb_miss_rate   = self.tlb_misses / total_tlb if total_tlb else 0.0
+
+        translation_cost = tlb_hit_cycles + tlb_miss_rate * tlb_miss_penalty
+        memory_cost      = l1_hit_cycles + cache_miss_rate * mem_cycles
+
+        return translation_cost + memory_cost
+
+    def amat_report(self):
+        """Print a human-readable AMAT breakdown."""
+        cache_miss_rate = 1.0 - self.cache.hit_rate()
+        total_tlb       = self.tlb_hits + self.tlb_misses
+        tlb_miss_rate   = self.tlb_misses / total_tlb if total_tlb else 0.0
+        value           = self.amat()
+
+        print(f"  AMAT breakdown:")
+        print(f"    Cache miss rate : {cache_miss_rate:.2%}")
+        print(f"    TLB miss rate   : {tlb_miss_rate:.2%}")
+        print(f"    AMAT            : {value:.2f} cycles")
+        return value

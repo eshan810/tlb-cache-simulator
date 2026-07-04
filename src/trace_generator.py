@@ -100,10 +100,20 @@ def save_trace(traces, filename):
 
 
 def load_trace(filename):
-    """Load a trace file back into a list of (mode, address) tuples."""
-    filepath = os.path.join("traces", filename)
-    traces = []
+    """
+    Load a trace file back into a list of (mode, address) tuples.
+    Accepts either a plain filename (looks in traces/ folder automatically)
+    or a full/relative path (used as-is).
+    """
+    # if the path already exists as given, use it directly
+    # otherwise fall back to looking inside traces/
+    if os.path.exists(filename):
+        filepath = filename
+    else:
+        filepath = os.path.join("traces", filename)
+
     with open(filepath, "r") as f:
+        traces = []
         for line in f:
             parts = line.strip().split()
             if len(parts) == 2:

@@ -34,10 +34,11 @@ def run_trace(trace_file, label, cache_policy="LRU", tlb_policy="LRU"):
         mem.access(addr, mode)
     stats = mem.stats()
     print(f"  {label}:")
-    print(f"    Cache hit rate:    {stats['cache_hit_rate']:.2%}")
-    print(f"    TLB hit rate:      {stats['tlb_hit_rate']:.2%}")
-    print(f"    Page fault rate:   {stats['page_fault_rate']:.2%}")
-    return stats
+    print(f"    Cache hit rate  : {stats['cache_hit_rate']:.2%}")
+    print(f"    TLB hit rate    : {stats['tlb_hit_rate']:.2%}")
+    print(f"    Page fault rate : {stats['page_fault_rate']:.2%}")
+    print(f"    AMAT            : {mem.amat():.2f} cycles")
+    return stats, mem
 
 
 def experiment_access_patterns():
