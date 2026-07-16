@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache-simulator
+  labels:
+    app: cache-simulator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: cache-simulator
+  template:
+    metadata:
+      labels:
+        app: cache-simulator
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: cache-simulator
+        image: asiancoder01/cache-simulator:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "256Mi"    # bumped from 128 — multicore needs more
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"       # bumped — multicore is CPU intensive
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
